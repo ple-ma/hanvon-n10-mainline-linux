@@ -1,0 +1,17 @@
+第三方组件声明（本仓库不打包以下内容，仅记录依赖关系）：
+
+1. Python依赖（pip安装，按其各自许可证使用）：
+   - Pillow（MIT-CMU）
+   - pyte（LGPL，作为未修改的库使用）
+
+2. 拼音输入法词库（gui/build_pinyin.py 的构建产物）不随仓库分发，
+   构建时自以下来源生成，请遵守各自许可证：
+   - jieba 词频表（MIT）           https://github.com/fxsjy/jieba
+   - CC-CEDICT（CC BY-SA 4.0）     https://cc-cedict.org
+   - rime luna-pinyin（见仓库许可） https://github.com/rime/rime-luna-pinyin
+
+3. 内核中的 fp9931.c：
+   SPDX GPL-2.0-only, Copyright (C) 2025 Andreas Kemnade
+
+4. 墨水屏波形文件(ebc.wbf)、任何厂商固件/二进制/反编译产物均不包含在本仓库。
+   使用者请从自己的设备提取。

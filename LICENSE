@@ -1,0 +1,15 @@
+本仓库采用分层许可：
+
+  kernel/      GPL-2.0-only
+    内核补丁与驱动（含对Linux内核的修改及由GPL-2.0源码派生的部分）
+    详见 LICENSES/GPL-2.0-only.txt
+
+  gui/ tools/ rootfs/    MIT
+    用户态GUI、构建与打包工具、rootfs脚本
+    详见 LICENSES/MIT.txt
+
+  docs/     CC-BY-4.0
+    文档与过程记录
+    详见 LICENSES/CC-BY-4.0.txt
+
+各源文件以文件头的 SPDX-License-Identifier 标注为准；无标注的按所在目录处理。

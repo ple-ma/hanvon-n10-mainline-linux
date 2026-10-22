@@ -1,0 +1,112 @@
+From: N10 Mainline Linux Project
+Subject: drm/panel: panel-simple: adjust vtotal for scan-out alignment
+
+The Hanvon N10 panel scans the framebuffer top/bottom edges over
+adjacent lines. Bumping vtotal so the extra lines land in blanking
+fixes the garbled strips at the panel edges (originally with 20,
+the panels are idiosyncratic here).
+---
+
+diff --git a/drivers/gpu/drm/panel/panel-simple.c b/drivers/gpu/drm/panel/panel-simple.c
+index b82a5efc4..6b0507a9c 100644
+--- a/drivers/gpu/drm/panel/panel-simple.c
++++ b/drivers/gpu/drm/panel/panel-simple.c
+@@ -1906,7 +1906,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1921,7 +1921,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1936,7 +1936,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1951,7 +1951,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1967,7 +1967,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1982,7 +1982,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -1997,7 +1997,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2,
+ 	},
+@@ -2020,7 +2020,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ 		.vdisplay = 1404,
+ 		.vsync_start = 1404 + 12,
+ 		.vsync_end = 1404 + 12 + 1,
+-		.vtotal = 1404 + 12 + 1 + 4,
++		.vtotal = 1404 + 12 + 1 + 11,
+ 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC |
+ 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2 |
+ 			DRM_MODE_TYPE_PREFERRED,
+@@ -2048,7 +2048,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ /* 		.vdisplay = 1404, */
+ /* 		.vsync_start = 1404 + 12, */
+ /* 		.vsync_end = 1404 + 12 + 1, */
+-/* 		.vtotal = 1404 + 12 + 1 + 4, */
++/* 		.vtotal = 1404 + 12 + 1 + 11, */
+ /* 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC | */
+ /* 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2, */
+ /* 	}, */
+@@ -2062,7 +2062,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ /* 		.vdisplay = 1404, */
+ /* 		.vsync_start = 1404 + 12, */
+ /* 		.vsync_end = 1404 + 12 + 1, */
+-/* 		.vtotal = 1404 + 12 + 1 + 4, */
++/* 		.vtotal = 1404 + 12 + 1 + 11, */
+ /* 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC | */
+ /* 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2, */
+ /* 	}, */
+@@ -2076,7 +2076,7 @@ static const struct drm_display_mode eink_ed103tc2_mode[] ={
+ /* 		.vdisplay = 1404, */
+ /* 		.vsync_start = 1404 + 12, */
+ /* 		.vsync_end = 1404 + 12 + 1, */
+-/* 		.vtotal = 1404 + 12 + 1 + 4, */
++/* 		.vtotal = 1404 + 12 + 1 + 11, */
+ /* 		.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NVSYNC | */
+ /* 			 DRM_MODE_FLAG_HSKEW | DRM_MODE_FLAG_CLKDIV2, */
+ /* 	}, */

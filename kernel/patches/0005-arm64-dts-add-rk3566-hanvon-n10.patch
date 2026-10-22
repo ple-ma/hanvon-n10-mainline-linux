@@ -1,0 +1,824 @@
+From: N10 Mainline Linux Project
+Subject: arm64: dts: add rk3566-hanvon-n10 device tree
+
+Device tree for the Hanvon N10 e-reader (RK3566, 10.3" ED103TC2U2
+e-ink panel, EMR pen on uart5, gpio-keys, rk817 codec, fp9931 PMIC,
+brcmfmac43456 sdio wifi).
+---
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3566-hanvon-n10.dts b/arch/arm64/boot/dts/rockchip/rk3566-hanvon-n10.dts
+new file mode 100644
+--- /dev/null
++++ b/arch/arm64/boot/dts/rockchip/rk3566-hanvon-n10.dts
+@@ -0,0 +1,799 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Hanvon N10 (2022) — RK3566 e-ink notebook
++ * 逆向自原厂 Android 内核设备树 (rk3566_eink)
++ */
++
++/dts-v1/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/gpio-keys.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/leds/common.h>
++#include <dt-bindings/pinctrl/rockchip.h>
++#include <dt-bindings/suspend/rockchip-rk3568.h>
++
++#include "rk3566.dtsi"
++
++/ {
++	aliases {
++		mmc0 = &sdhci;
++	};
++
++	chosen {
++		stdout-path = "serial2:115200n8";
++	};
++
++	/* 9 个侧键，全在 gpio0，低电平有效 */
++	gpio-keys {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&keys_p>;
++		pinctrl-names = "default";
++
++		key-1 {
++			label = "key1";
++			gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
++			linux,code = <0x252>;
++			wakeup-source;
++		};
++		key-2 {
++			label = "key2";
++			gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_LOW>;
++			linux,code = <0x253>;
++			wakeup-source;
++		};
++		key-3 {
++			label = "key3";
++			gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_LOW>;
++			linux,code = <0x254>;
++			wakeup-source;
++		};
++		key-4 {
++			label = "key4";
++			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
++			linux,code = <0x255>;
++			wakeup-source;
++		};
++		key-5 {
++			label = "key5";
++			gpios = <&gpio0 RK_PC4 GPIO_ACTIVE_LOW>;
++			linux,code = <0x256>;
++			wakeup-source;
++		};
++		key-6 {
++			label = "key6";
++			gpios = <&gpio0 RK_PB0 GPIO_ACTIVE_LOW>;
++			linux,code = <0x257>;
++			wakeup-source;
++		};
++		key-7 {
++			label = "key7";
++			gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_LOW>;
++			linux,code = <0x258>;
++			wakeup-source;
++		};
++		key-8 {
++			label = "key8";
++			gpios = <&gpio0 RK_PC7 GPIO_ACTIVE_LOW>;
++			linux,code = <0x259>;
++			wakeup-source;
++		};
++		key-back {
++			label = "back";
++			gpios = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_BACK>;
++			wakeup-source;
++		};
++		/* MH248 霍尔传感器: 皮套开合 */
++		switch-cover {
++			label = "cover";
++			gpios = <&gpio0 RK_PA4 GPIO_ACTIVE_LOW>;
++			linux,input-type = <EV_SW>;
++			linux,code = <SW_MACHINE_COVER>;
++			wakeup-source;
++		};
++	};
++
++	/* 充电指示灯 gpio0 PC3 高有效 */
++	gpio-leds {
++		compatible = "gpio-leds";
++		pinctrl-0 = <&led_pin>;
++		pinctrl-names = "default";
++
++		led-0 {
++			color = <LED_COLOR_ID_WHITE>;
++			function = LED_FUNCTION_CHARGING;
++			gpios = <&gpio0 RK_PC3 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "default-on";
++			retain-state-suspended;
++		};
++	};
++
++	/* ED103TC2 墨水屏 — 与 PineNote 同款 */
++	panel {
++		compatible = "eink,ed103tc2";
++
++		port {
++			panel_in_ebc: endpoint {
++				remote-endpoint = <&ebc_out_panel>;
++			};
++		};
++	};
++
++	rockchip-suspend {
++		compatible = "rockchip,pm-rk3568";
++		status = "okay";
++		rockchip,sleep-debug-en = <0>;
++		rockchip,sleep-mode-config = <
++			(0
++			| RKPM_SLP_CENTER_OFF
++			| RKPM_SLP_ARMOFF_LOGOFF
++			| RKPM_SLP_PMIC_LP
++			| RKPM_SLP_HW_PLLS_OFF
++			| RKPM_SLP_PMUALIVE_32K
++			| RKPM_SLP_OSC_DIS
++			| RKPM_SLP_32K_PVTM
++			)
++		>;
++		rockchip,wakeup-config = <
++			(0
++			| RKPM_GPIO_WKUP_EN
++			)
++		>;
++	};
++
++	sdio_pwrseq: sdio-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&rk817 1>;
++		clock-names = "ext_clock";
++		pinctrl-0 = <&wifi_enable_h>;
++		pinctrl-names = "default";
++		/* wifi-enable: gpio0 PD5 (PA7是wifi-vbat/vcc_wl在用) */
++		reset-gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_LOW>;
++	};
++
++	vcc_bat: vcc-bat {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_bat";
++		regulator-always-on;
++		regulator-min-microvolt = <3800000>;
++		regulator-max-microvolt = <3800000>;
++	};
++
++	vcc_sys: vcc-sys {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_sys";
++		regulator-always-on;
++		regulator-min-microvolt = <3800000>;
++		regulator-max-microvolt = <3800000>;
++		vin-supply = <&vcc_bat>;
++	};
++
++	vcc_1v8: vcc-1v8 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_1v8";
++		regulator-always-on;
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&vcc_1v8_en>;
++	};
++
++	vcc_wl: vcc-wl {
++		compatible = "regulator-fixed";
++		enable-active-high;
++		gpio = <&gpio0 RK_PA7 GPIO_ACTIVE_HIGH>;
++		pinctrl-0 = <&vcc_wl_pin>;
++		pinctrl-names = "default";
++		regulator-name = "vcc_wl";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&vcc_bat>;
++		regulator-always-on;
++	};
++
++	vdda_0v9: vdda-0v9 {
++		compatible = "regulator-fixed";
++		regulator-name = "vdda_0v9";
++		regulator-always-on;
++		regulator-min-microvolt = <900000>;
++		regulator-max-microvolt = <900000>;
++		vin-supply = <&vcc_1v8_en>;
++	};
++};
++
++&cru {
++	assigned-clocks = <&pmucru CLK_RTC_32K>,
++		  <&cru ACLK_TOP_HIGH>, <&cru ACLK_TOP_LOW>,
++		  <&cru PLL_GPLL>, <&pmucru PLL_PPLL>,
++		  <&cru ACLK_RGA_PRE>, <&cru CPLL_250M>,
++		  <&cru HCLK_RGA_PRE>, <&cru HCLK_EBC>,
++		  <&cru HCLK_JENC>;
++	assigned-clock-rates = <32768>,
++			<500000000>, <400000000>,
++			<1200000000>, <200000000>,
++			<300000000>, <300000000>,
++			<300000000>, <300000000>,
++			<300000000>;
++	assigned-clock-parents = <&pmucru CLK_RTC32K_FRAC>;
++};
++
++&cpu0 { cpu-supply = <&vdd_cpu>; };
++&cpu1 { cpu-supply = <&vdd_cpu>; };
++&cpu2 { cpu-supply = <&vdd_cpu>; };
++&cpu3 { cpu-supply = <&vdd_cpu>; };
++
++&ebc {
++	/* 温度传感器通道不接(fp9931走hwmon), ebc驱动已打补丁容错 */
++	panel-supply = <&v3p3>;
++	vcom-supply = <&vcom>;
++	vdrive-supply = <&vposneg>;
++	status = "okay";
++
++	port {
++		ebc_out_panel: endpoint {
++			remote-endpoint = <&panel_in_ebc>;
++		};
++	};
++};
++
++&eink {
++	status = "okay";
++};
++
++&gpu {
++	status = "disabled";
++};
++
++&i2c0 {
++	status = "okay";
++
++	vdd_cpu: regulator@1c {
++		compatible = "tcs,tcs4525";
++		reg = <0x1c>;
++		fcs,suspend-voltage-selector = <0>;
++		regulator-name = "vdd_cpu";
++		regulator-min-microvolt = <712500>;
++		regulator-max-microvolt = <1390000>;
++		regulator-ramp-delay = <2300>;
++		regulator-always-on;
++		vin-supply = <&vcc_sys>;
++
++		regulator-state-mem {
++			regulator-on-in-suspend;
++		};
++	};
++
++	rk817: pmic@20 {
++		compatible = "rockchip,rk817";
++		reg = <0x20>;
++		interrupt-parent = <&gpio0>;
++		interrupts = <RK_PA3 IRQ_TYPE_LEVEL_LOW>;
++		assigned-clocks = <&cru I2S1_MCLKOUT_TX>;
++		assigned-clock-parents = <&cru CLK_I2S1_8CH_TX>;
++		clocks = <&cru I2S1_MCLKOUT_TX>;
++		clock-names = "mclk";
++		#clock-cells = <1>;
++		pinctrl-0 = <&pmic_int_l>, <&pmic_sleep>;
++		pinctrl-names = "default";
++		rockchip,system-power-controller;
++		wakeup-source;
++
++		vcc1-supply = <&vcc_sys>;
++		vcc2-supply = <&vcc_sys>;
++		vcc3-supply = <&vcc_sys>;
++		vcc4-supply = <&vcc_sys>;
++		vcc5-supply = <&vcc_sys>;
++		vcc6-supply = <&vcc_sys>;
++		vcc7-supply = <&vcc_sys>;
++		vcc8-supply = <&vcc_sys>;
++		vcc9-supply = <&dcdc_boost>;
++
++		battery {
++			monitored-battery = <&battery_cell>;
++			rockchip,resistor-sense-micro-ohms = <10000>;
++			rockchip,sleep-enter-current-microamp = <150000>;
++			rockchip,sleep-filter-current-microamp = <100000>;
++		};
++
++		rk817_charger: charger {
++			monitored-battery = <&battery_cell>;
++			rockchip,resistor-sense-micro-ohms = <10000>;
++			rockchip,sleep-enter-current-microamp = <150000>;
++			rockchip,sleep-filter-current-microamp = <100000>;
++		};
++
++		regulators {
++			vdd_logic: DCDC_REG1 {
++				regulator-name = "vdd_logic";
++				regulator-always-on;
++				regulator-min-microvolt = <500000>;
++				regulator-max-microvolt = <1350000>;
++				regulator-ramp-delay = <6001>;
++				regulator-initial-mode = <0x2>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++					regulator-suspend-microvolt = <900000>;
++				};
++			};
++
++			vdd_gpu_npu: DCDC_REG2 {
++				regulator-name = "vdd_gpu_npu";
++				regulator-always-on;
++				regulator-min-microvolt = <500000>;
++				regulator-max-microvolt = <1350000>;
++				regulator-ramp-delay = <6001>;
++				regulator-initial-mode = <0x2>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			vcc_ddr: DCDC_REG3 {
++				regulator-name = "vcc_ddr";
++				regulator-always-on;
++				regulator-initial-mode = <0x2>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vcc_3v3: DCDC_REG4 {
++				regulator-name = "vcc_3v3";
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				regulator-initial-mode = <0x2>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			vcca_1v8_pmu: LDO_REG1 {
++				regulator-name = "vcca_1v8_pmu";
++				regulator-always-on;
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vdda_0v9_ldo: LDO_REG2 {
++				regulator-name = "vdda_0v9_ldo";
++				regulator-always-on;
++				regulator-min-microvolt = <900000>;
++				regulator-max-microvolt = <900000>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			vdda_0v9_pmu: LDO_REG3 {
++				regulator-name = "vdda_0v9_pmu";
++				regulator-always-on;
++				regulator-min-microvolt = <900000>;
++				regulator-max-microvolt = <900000>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vccio_acodec: LDO_REG4 {
++				regulator-name = "vccio_acodec";
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vccio_sd: LDO_REG5 {
++				regulator-name = "vccio_sd";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <3300000>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			vcc_3v3_pmu: LDO_REG6 {
++				regulator-name = "vcc_3v3_pmu";
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			vcc_1v8_en: LDO_REG7 {
++				regulator-name = "vcc_1v8_en";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			vbat_4g_en: LDO_REG8 {
++				regulator-name = "vbat_4g_en";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			sleep_sta_ctl: LDO_REG9 {
++				regulator-name = "sleep_sta_ctl";
++				regulator-min-microvolt = <1800000>;
++				regulator-max-microvolt = <1800000>;
++
++				regulator-state-mem {
++					regulator-on-in-suspend;
++				};
++			};
++
++			dcdc_boost: BOOST {
++				regulator-name = "boost";
++				regulator-min-microvolt = <5000000>;
++				regulator-max-microvolt = <5000000>;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++
++			otg_switch: OTG_SWITCH {
++				regulator-name = "otg_switch";
++				regulator-always-on;
++
++				regulator-state-mem {
++					regulator-off-in-suspend;
++				};
++			};
++		};
++	};
++};
++
++/* i2c3: FP9931墨水屏电源 + FUSB302 Type-C + SC7A20加速度计 */
++&i2c3 {
++	pinctrl-0 = <&i2c3m1_xfer>;
++	status = "okay";
++
++	ebc_pmic: pmic@18 {
++		compatible = "fitipower,fp9931";
++		reg = <0x18>;
++		pinctrl-0 = <&fp9931_pins>;
++		pinctrl-names = "default";
++		/* vendor: poweren=gpio3 PA4, powergood=gpio3 PC5(不是PB5!PB5是i2c3的SDA), tempen=gpio3 PA6, powerup=gpio3 PA1 */
++		enable-gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;
++		pg-gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
++		en-ts-gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
++		vin-supply = <&vcc_bat>;
++
++		regulators {
++			v3p3: v3p3 {
++				regulator-name = "v3p3";
++				regulator-always-on;
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++			};
++
++			vcom: vcom {
++				regulator-name = "vcom";
++				regulator-always-on;
++			};
++
++			vposneg: vposneg {
++				regulator-name = "vposneg";
++				regulator-always-on;
++				regulator-min-microvolt = <15060000>;
++				regulator-max-microvolt = <15060000>;
++			};
++		};
++	};
++
++	fusb302: tcpc@22 {
++		compatible = "fcs,fusb302";
++		reg = <0x22>;
++		interrupt-parent = <&gpio0>;
++		interrupts = <RK_PC1 IRQ_TYPE_LEVEL_LOW>;
++		pinctrl-0 = <&tcpc_int_l>;
++		pinctrl-names = "default";
++		status = "okay";
++
++		connector {
++			compatible = "usb-c-connector";
++			label = "USB-C";
++			vbus-supply = <&otg_switch>;
++			power-role = "dual";
++			try-power-role = "sink";
++			data-role = "dual";
++			typec-power-opmode = "default";
++
++			ports {
++				#address-cells = <0x1>;
++				#size-cells = <0x0>;
++
++				port@0 {
++					reg = <0x0>;
++
++					usbc_hs: endpoint {
++						remote-endpoint = <&usb2phy0_typec_hs>;
++					};
++				};
++			};
++		};
++	};
++
++	accelerometer@19 {
++		compatible = "silan,sc7a20";
++		reg = <0x19>;
++		vdd-supply = <&vcc_3v3>;
++		vddio-supply = <&vcc_3v3>;
++	};
++};
++
++&pmu_io_domains {
++	pmuio1-supply = <&vcc_3v3_pmu>;
++	pmuio2-supply = <&vcc_3v3_pmu>;
++	vccio1-supply = <&vccio_acodec>;
++	vccio3-supply = <&vccio_sd>;
++	vccio4-supply = <&vcca_1v8_pmu>;
++	vccio5-supply = <&vcc_3v3>;
++	vccio6-supply = <&vcc_3v3>;
++	vccio7-supply = <&vcc_3v3>;
++	status = "okay";
++};
++
++&saradc {
++	vref-supply = <&vcc_1v8>;
++	status = "okay";
++};
++
++&sdhci {
++	bus-width = <8>;
++	mmc-hs200-1_8v;
++	non-removable;
++	pinctrl-0 = <&emmc_bus8>, <&emmc_clk>, <&emmc_cmd>, <&emmc_datastrobe>, <&emmc_rstnout>;
++	pinctrl-names = "default";
++	vmmc-supply = <&vcc_3v3>;
++	vqmmc-supply = <&vcc_1v8>;
++	status = "okay";
++};
++
++/* WiFi: AP6256 on dwmmc@fe2c0000 */
++&sdmmc1 {
++	bus-width = <4>;
++	cap-sd-highspeed;
++	cap-sdio-irq;
++	keep-power-in-suspend;
++	mmc-pwrseq = <&sdio_pwrseq>;
++	non-removable;
++	pinctrl-0 = <&sdmmc1_bus4>, <&sdmmc1_clk>, <&sdmmc1_cmd>;
++	pinctrl-names = "default";
++	sd-uhs-sdr104;
++	vmmc-supply = <&vcc_wl>;
++	vqmmc-supply = <&vcca_1v8_pmu>;
++	status = "okay";
++};
++
++&tsadc {
++	rockchip,hw-tshut-mode = <1>;
++	rockchip,hw-tshut-polarity = <0>;
++	status = "okay";
++};
++
++/* 蓝牙: AP6256 BT on uart1
++ * vendor: bt-reset=gpio0 PA6, bt-wake=gpio0 PD4, bt-irq=gpio0 PD6 */
++&uart1 {
++	pinctrl-0 = <&uart1m0_ctsn>, <&uart1m0_rtsn>, <&uart1m0_xfer>;
++	pinctrl-names = "default";
++	uart-has-rtscts;
++	status = "okay";
++
++	bluetooth {
++		compatible = "brcm,bcm43438-bt";
++		clocks = <&rk817 1>;
++		clock-names = "lpo";
++		shutdown-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
++		device-wakeup-gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
++		host-wakeup-gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
++		max-speed = <3000000>;
++		pinctrl-0 = <&bt_enable_h>, <&bt_wake_h>, <&bt_host_wake_l>;
++		pinctrl-names = "default";
++		vbat-supply = <&vcc_wl>;
++		vddio-supply = <&vcca_1v8_pmu>;
++	};
++};
++
++/* 调试控制台 + 电磁笔(后续接hanvon驱动) */
++&uart2 {
++	status = "okay";
++};
++
++&usb_host0_xhci {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&usb2phy0 {
++	status = "okay";
++};
++
++&usb2phy0_otg {
++	status = "okay";
++
++	port {
++		usb2phy0_typec_hs: endpoint {
++			remote-endpoint = <&usbc_hs>;
++		};
++	};
++};
++
++&pinctrl {
++	keys {
++		keys_p: keys-p {
++			rockchip,pins =
++				<0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PB5 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PC4 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PC7 RK_FUNC_GPIO &pcfg_pull_up>,
++				<0 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
++	fp9931 {
++		fp9931_pins: fp9931-pins {
++			rockchip,pins =
++				<3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>,
++				<3 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>,
++				<3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	led {
++		led_pin: led-pin {
++			rockchip,pins = <0 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	pmic {
++		pmic_int_l: pmic-int-l {
++			rockchip,pins = <0 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		pmic_sleep: pmic-sleep {
++			rockchip,pins = <0 RK_PA2 1 &pcfg_pull_none>;
++		};
++	};
++
++	sdio-pwrseq {
++		wifi_enable_h: wifi-enable-h {
++			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	tcpc {
++		tcpc_int_l: tcpc-int-l {
++			rockchip,pins = <0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
++	vcc-wl {
++		vcc_wl_pin: vcc-wl-pin {
++			rockchip,pins = <0 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
++	bt {
++		bt_enable_h: bt-enable-h {
++			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_wake_h: bt-wake-h {
++			rockchip,pins = <0 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_host_wake_l: bt-host-wake-l {
++			rockchip,pins = <0 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++};
++
++/* 电池: N10 3416mAh (vendor design_capacity=0xD58, qmax=0xEAE) */
++/ {
++	battery_cell: battery-cell {
++	compatible = "simple-battery";
++	charge-full-design-microamp-hours = <3416000>;
++	charge-term-current-microamp = <300000>;
++	constant-charge-current-max-microamp = <1600000>;
++	constant-charge-voltage-max-microvolt = <4300000>;
++	factory-internal-resistance-micro-ohms = <94000>;
++	voltage-max-design-microvolt = <4300000>;
++	voltage-min-design-microvolt = <3450000>;
++
++	ocv-capacity-celsius = <20>;
++	/* 先用 PineNote 的曲线, 后续按实测校准 */
++	ocv-capacity-table-0 = <4168000 100>,
++			       <4109000 95>, <4066000 90>, <4023000 85>, <3985000 80>,
++			       <3954000 75>, <3924000 70>, <3897000 65>, <3866000 60>,
++			       <3826000 55>, <3804000 50>, <3789000 45>, <3777000 40>,
++			       <3770000 35>, <3763000 30>, <3750000 25>, <3732000 20>,
++			       <3710000 15>, <3680000 10>, <3670000  5>, <3500000  0>;
++};
++};
++
++/* fp9931的powerup脚(PA1): 主线驱动不管它, 但不拉高芯片i2c不应答(ENXIO)
++ * 用gpio-hog在gpio3 probe时就拉高, 早于i2c设备probe */
++&gpio3 {
++	fp9931_powerup: fp9931-powerup {
++		gpio-hog;
++		gpios = <RK_PA1 GPIO_ACTIVE_HIGH>;
++		output-high;
++		line-name = "fp9931-powerup";
++	};
++};
++
++/* 电磁笔串口候选: uart5 (fe690000), 引脚gpio3 C2/C3 */
++&uart5 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart5m1_xfer>;
++};
++
++/* ===== audio: I2S1 + RK817 codec (speaker/headphone) ===== */
++&i2s1_8ch {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s1m0_sclktx &i2s1m0_lrcktx &i2s1m0_sdi0 &i2s1m0_sdo0>;
++	rockchip,clk-trcm = <1>;
++};
++
++&rk817 {
++	rk817_codec: codec {
++		#sound-dai-cells = <0x0>;
++		compatible = "rockchip,rk817-codec";
++		clocks = <&cru CLK_I2S1_8CH_TX>;
++		clock-names = "mclk";
++		pinctrl-names = "default";
++		pinctrl-0 = <&i2s1m0_mclk>;
++		hp-volume = <20>;
++		spk-volume = <12>;
++		out-l2spk-r2hp;
++		status = "okay";
++	};
++};
++
++/ {
++	rk817_sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,name = "rockchip,rk817-codec";
++		simple-audio-card,mclk-fs = <256>;
++		simple-audio-card,cpu {
++			sound-dai = <&i2s1_8ch>;
++		};
++		simple-audio-card,codec {
++			sound-dai = <&rk817_codec>;
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
+index e7728007f..712a0574d 100644
+--- a/arch/arm64/boot/dts/rockchip/Makefile
++++ b/arch/arm64/boot/dts/rockchip/Makefile
+@@ -77,6 +77,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-anbernic-rg353vs.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-anbernic-rg503.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-pinenote-v1.1.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-pinenote-v1.2.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-hanvon-n10.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-a.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-quartz64-b.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-radxa-cm3-io.dtb

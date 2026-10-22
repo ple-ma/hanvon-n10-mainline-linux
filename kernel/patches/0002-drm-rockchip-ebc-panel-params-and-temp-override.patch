@@ -1,0 +1,149 @@
+From: N10 Mainline Linux Project
+Subject: drm/rockchip: ebc: add panel params and honor temp_override without IIO
+
+- module params: panel_reflection (mirroring), panel_yshift (kept as
+  a deprecated debug knob)
+- let temp_override= work even when no temperature IIO channel is
+  available (the N10 has no usable thermal input for the ebc path).
+---
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_ebc.c b/drivers/gpu/drm/rockchip/rockchip_ebc.c
+index 8b217f15f..771d0be1a 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_ebc.c
++++ b/drivers/gpu/drm/rockchip/rockchip_ebc.c
+@@ -201,9 +201,13 @@ static bool direct_mode = false;
+ module_param(direct_mode, bool, 0444);
+ MODULE_PARM_DESC(direct_mode, "compute waveforms in software (software LUT)");
+ 
+-static bool panel_reflection = true;
+-module_param(panel_reflection, bool, 0644);
+-MODULE_PARM_DESC(panel_reflection, "reflect the image horizontally");
++static int panel_reflection = 1;
++module_param(panel_reflection, int, 0644);
++MODULE_PARM_DESC(panel_reflection, "0=Y flip, 1=X mirror, 2=no flip (N10)");
++
++static int panel_yshift = 0;
++module_param(panel_yshift, int, 0644);
++MODULE_PARM_DESC(panel_yshift, "N10: shift image N gate lines toward gate start (runtime tunable)");
+ 
+ static bool skip_reset = false;
+ module_param(skip_reset, bool, 0444);
+@@ -1195,6 +1199,12 @@ static void rockchip_ebc_refresh(struct rockchip_ebc *ebc,
+ 		return;
+ 	}
+ 
++	if (!ebc->temperature_channel) {
++		ret = drm_epd_lut_set_temperature(&ebc->lut, temp_override > 0 ? temp_override : 25);
++		if (ret > 0)
++			ebc->lut_changed = true;
++		goto skip_temp;
++	}
+ 	ret = iio_read_channel_processed(ebc->temperature_channel, &temperature);
+ 	if (ret < 0) {
+ 		drm_err(drm, "Failed to get temperature: %d\n", ret);
+@@ -1213,6 +1223,7 @@ static void rockchip_ebc_refresh(struct rockchip_ebc *ebc,
+ 		else if (ret)
+ 			ebc->lut_changed = true;
+ 	}
++skip_temp:
+ 
+ 	ret = drm_epd_lut_set_waveform(&ebc->lut, waveform);
+ 	if (ret < 0)
+@@ -1928,28 +1939,29 @@ static bool rockchip_ebc_blit_fb_xrgb8888(const struct rockchip_ebc_ctx *ctx,
+ 	/* printk(KERN_INFO "dither low/high: %u %u bw_mode: %i\n", dither_low, dither_high, bw_mode); */
+ 
+ 	// -2 because we need to go to the beginning of the last line
+-	start_y = panel_reflection ? src_clip->y1 : src_clip->y2 - 2;
+-	delta_y = panel_reflection ? 1: -1;
++	start_y = (panel_reflection == 0) ? src_clip->y2 - 2 : src_clip->y1;
++	delta_y = (panel_reflection == 0) ? -1 : 1;
+ 
+-	if (panel_reflection)
+-		end_y2 = src_clip->y2;
+-	else
++	if (panel_reflection == 0)
+ 		end_y2 = src_clip->y2 - 1;
++	else
++		end_y2 = src_clip->y2;
+ 
+-	delta_x = panel_reflection ? -1 : 1;
+-	start_x = panel_reflection ? src_clip->x2 - 1 : src_clip->x1;
++	delta_x = (panel_reflection == 1) ? -1 : 1;
++	start_x = (panel_reflection == 1) ? src_clip->x2 - 1 : src_clip->x1;
+ 	// depending on the direction we must either save the first or the last bit
+-	test1 = panel_reflection ? adjust_x1 : adjust_x2;
+-	test2 = panel_reflection ? adjust_x2 : adjust_x1;
++	test1 = (panel_reflection == 1) ? adjust_x1 : adjust_x2;
++	test2 = (panel_reflection == 1) ? adjust_x2 : adjust_x1;
+ 
+ 	dst = ctx->final_atomic_update + dst_clip->y1 * dst_pitch + dst_clip->x1 / 2;
+ 	src = vaddr + start_y * src_pitch + start_x * fb->format->cpp[0];
+ 
+ 	for (y = src_clip->y1; y < end_y2; y++) {
+ 		const u32 *sbuf = src;
+-		u8 *dbuf = dst;
++		u8 *dbuf = dst - ((panel_reflection == 2) ? panel_yshift * (int)dst_pitch : 0);
++		bool row_off = (panel_reflection == 2) && (y < panel_yshift || (y - panel_yshift) >= (int)fb->height);
+ 
+-		for (x = src_clip->x1; x < src_clip->x2; x += 2) {
++		for (x = src_clip->x1; !row_off && x < src_clip->x2; x += 2) {
+ 			u32 rgb0, rgb1;
+ 			u8 gray;
+ 			u8 tmp_pixel;
+@@ -2051,10 +2063,10 @@ static bool rockchip_ebc_blit_fb_xrgb8888(const struct rockchip_ebc_ctx *ctx,
+ 		}
+ 
+ 		dst += dst_pitch;
+-		if (panel_reflection)
+-			src += src_pitch;
+-		else
++		if (panel_reflection == 0)
+ 			src -= src_pitch;
++		else
++			src += src_pitch;
+ 	}
+ 
+ 	return !!changed;
+@@ -2121,13 +2133,13 @@ static void rockchip_ebc_plane_atomic_update(struct drm_plane *plane,
+ 		dst_clip->x2 += adjust_x2;
+ 		src_clip.x2  += adjust_x2;
+ 
+-		if (panel_reflection) {
++		if (panel_reflection == 1) {
+ 			int x1 = dst_clip->x1, x2 = dst_clip->x2;
+ 
+ 			dst_clip->x1 = plane_state->dst.x2 - x2;
+ 			dst_clip->x2 = plane_state->dst.x2 - x1;
+ 		}
+-		else
++		else if (panel_reflection == 0)
+ 		{
+ 			// "normal" mode
+ 			// flip y coordinates
+@@ -2136,6 +2148,7 @@ static void rockchip_ebc_plane_atomic_update(struct drm_plane *plane,
+ 			dst_clip->y1 = plane_state->dst.y2 - y2;
+ 			dst_clip->y2 = plane_state->dst.y2 - y1;
+ 		}
++		/* mode 2: no flip at all (N10 panel scan direction) */
+ 
+ 		if (limit_fb_blits != 0){
+ 			switch(plane_state->fb->format->format){
+@@ -2584,9 +2597,15 @@ static int rockchip_ebc_probe(struct platform_device *pdev)
+ 				     "Failed to get hclk\n");
+ 
+ 	ebc->temperature_channel = devm_iio_channel_get(dev, NULL);
+-	if (IS_ERR(ebc->temperature_channel))
+-		return dev_err_probe(dev, PTR_ERR(ebc->temperature_channel),
+-				     "Failed to get temperature I/O channel\n");
++	if (IS_ERR(ebc->temperature_channel)) {
++		if (PTR_ERR(ebc->temperature_channel) == -ENODEV) {
++			dev_info(dev, "no temperature channel, using fixed 25C\n");
++			ebc->temperature_channel = NULL;
++		} else {
++			return dev_err_probe(dev, PTR_ERR(ebc->temperature_channel),
++					     "Failed to get temperature I/O channel\n");
++		}
++	}
+ 
+ 	for (i = 0; i < EBC_NUM_SUPPLIES; i++)
+ 		ebc->supplies[i].supply = rockchip_ebc_supplies[i];
