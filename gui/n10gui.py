@@ -4,7 +4,7 @@
 - 行级增量: 只重画变化的终端行/键盘区, 局部写fb(免整帧旋转)
 - 全量帧仅在浮层开/关时(带GC16全刷)
 """
-import os, sys, struct, fcntl, mmap, time, pty, termios, threading, subprocess, queue
+import os, sys, struct, fcntl, mmap, time, pty, termios, threading, subprocess, queue, socket, glob
 import pyte
 from PIL import Image, ImageDraw, ImageFont
 
@@ -66,6 +66,27 @@ class Display:
             os.close(fd)
         except OSError:
             pass
+
+def wired_connected():
+    """有线网状态: 插线(carrier)且拿到IPv4才算连接成功"""
+    for p in glob.glob("/sys/class/net/*"):
+        name = os.path.basename(p)
+        if name in ("lo", "wlan0"):
+            continue
+        try:
+            if open(p + "/carrier").read().strip() != "1":
+                continue
+        except OSError:
+            continue
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", name.encode()[:15]))   # SIOCGIFADDR
+            return True
+        except OSError:
+            continue
+        finally:
+            s.close()
+    return False
 
 def read_battery():
     try:
@@ -335,9 +356,9 @@ class UsbKbd(threading.Thread):
                     pass
                 self.claimed.add(path)
                 print("usb kbd claimed:", name, flush=True)
-                threading.Thread(target=self._reader, args=(fd,), daemon=True).start()
+                threading.Thread(target=self._reader, args=(fd, path), daemon=True).start()
             time.sleep(2)
-    def _reader(self, fd):
+    def _reader(self, fd, path):
         shift = ctrl = alt = caps = False
         while True:
             try:
@@ -345,6 +366,10 @@ class UsbKbd(threading.Thread):
             except BlockingIOError:
                 time.sleep(0.01); continue
             except OSError:
+                self.claimed.discard(path)   # 设备断开: 释放认领, 等rescan重新接管
+                return
+            if not data:
+                self.claimed.discard(path)
                 return
             if len(data) != 24:
                 continue
@@ -485,6 +510,12 @@ class GUI:
         return hits, (0, y, W, 64)
 
     # ---------- 绘制 ----------
+    def draw_wired(self, on):
+        """顶栏WiFi左侧: 有线网状态(连接成功才显示, 否则留空)"""
+        self.d.rectangle([W - 770, 0, W - 590, TOPBAR], fill=0)
+        if on:
+            self.d.text((W - 752, 22), "有线", font=F_ITEM, fill=255)
+
     def draw_battery(self, cap, st):
         """顶栏电池(最右): 图标 + 电量% + 充放电状态"""
         self.d.rectangle([W - 310, 0, W, TOPBAR], fill=0)   # 清出电池区
@@ -598,6 +629,8 @@ class GUI:
         hits["btn_refresh"] = self.btn(self.d, (W-450, 9, 130, 58), "刷新", F_SMALL)
         self.last_batt = read_battery()
         self.draw_battery(*self.last_batt)
+        self.last_wired = wired_connected()
+        self.draw_wired(self.last_wired)
         kb_top = H - KB_H + 10
         if self.wifi_visible:
             # WiFi整页: 白底内容区 + 底部键盘(与终端页同一位置)
@@ -704,6 +737,12 @@ class GUI:
             self.last_batt = b
             self.draw_battery(*b)
             regions.append((0, 0, W, TOPBAR))
+        # 有线网状态变化时刷新WiFi左侧
+        wn = wired_connected()
+        if wn != getattr(self, "last_wired", None):
+            self.last_wired = wn
+            self.draw_wired(wn)
+            regions.append((W - 770, 0, 180, TOPBAR))
         for r in regions:
             self.disp.write_region(self.canvas, *r)
 
