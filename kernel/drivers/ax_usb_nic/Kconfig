@@ -1,0 +1,7 @@
+config USB_NET_AX_USB_NIC
+	tristate "ASIX USB NIC (AX88179A/AX88179B/AX88772E/D)"
+	depends on USB_USBNET
+	help
+	  ASIX official driver for AX88279A/AX88279/AX88179B/AX88179A/
+	  AX88772E/AX88772D/AX88178A USB Ethernet adapters.
+	  Needed for AX88179A (the in-kernel ax88179_178a does not support it).

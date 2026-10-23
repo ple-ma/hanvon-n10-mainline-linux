@@ -13,5 +13,9 @@
 3. 内核中的 fp9931.c：
    SPDX GPL-2.0-only, Copyright (C) 2025 Andreas Kemnade
 
-4. 墨水屏波形文件(ebc.wbf)、任何厂商固件/二进制/反编译产物均不包含在本仓库。
+4. kernel/drivers/ax_usb_nic/：ASIX 官方开源驱动
+   Copyright (C) ASIX Electronics Corp.，GPL-2.0，来源
+   https://github.com/ASIXElectronics/asix-usb-nic-linux-driver
+
+5. 墨水屏波形文件(ebc.wbf)、任何厂商固件/二进制/反编译产物均不包含在本仓库。
    使用者请从自己的设备提取。

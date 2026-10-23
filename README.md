@@ -22,7 +22,8 @@
 | 休眠/唤醒 | ✅ | + fp9931 PMIC 驱动解决唤醒白屏 |
 | 墨水屏温度补偿 | ✅ | ebc temp_override |
 | USB（Hub/键盘/U盘） | ✅ | DWC3 双角色 + TypeC |
-| USB 千兆网卡 AX88179A | 🔧 | 需 backport，见 kernel/README |
+| USB 千兆网卡 AX88179A | ✅ | ASIX 官方开源驱动(ax_usb_nic)，已内置内核 |
+| 充电（TypeC 供电路径） | ✅ | 修复 PD 属性缺失导致的"插电只放电" |
 | 墨水屏 GUI | ✅ | gui/：终端 + 键盘 + 拼音输入法 + 状态栏 |
 
 ## 仓库结构
@@ -47,6 +48,7 @@ docs/      CC-BY-4.0      过程记录(journey.md) + 坑清单(pitfalls.md)
 
 墨水屏左右切边、电磁笔7字节协议、唤醒白屏、WiFi固件时机，这些问题怎么定位怎么解决，
 写在了 [docs/journey.md](docs/journey.md)；踩过的所有坑单列在 [docs/pitfalls.md](docs/pitfalls.md)。
+版本历史在 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 致谢
 

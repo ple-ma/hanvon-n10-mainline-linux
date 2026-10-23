@@ -27,6 +27,7 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
 
 见 `../tools/README.md`（repack_n10_boot.py）。
 
-## 已知未完
+## 说明
 
-- USB千兆网卡 AX88179A：主线上游驱动在新内核，6.6需backport（`CONFIG_USB_NET_AX8817X`），编到probe阶段后搁置
+- USB 千兆网卡用的是 ASIX 官方开源驱动（`drivers/ax_usb_nic/`，GPL-2.0），不是内核自带的
+  ax88179_178a——那个到 6.6 甚至主线 master 都不认 AX88179A。已按内置(=y)编入 boot 镜像。
